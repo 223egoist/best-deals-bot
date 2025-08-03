@@ -2,43 +2,45 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 
-# Replace with actual product URLs later
-PRODUCT_URLS = [
-    "https://www.amazon.in/dp/B07DJL15QT",  # Sample product
-    "https://www.amazon.in/dp/B089MS8XQ7"
-]
-
-AFFILIATE_TAG = "bestdealsbo06-21"
-
-def fetch_price_amazon(url):
+def get_deals():
+    url = "https://www.amazon.in/gp/goldbox"
     headers = {
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0"
     }
     r = requests.get(url, headers=headers)
-    soup = BeautifulSoup(r.text, 'html.parser')
-    title = soup.find(id='productTitle')
-    price = soup.find('span', {'class': 'a-offscreen'})
-    if title and price:
-        return {
-            "title": title.get_text(strip=True),
-            "price": price.get_text(strip=True),
-            "url": url + f"?tag={AFFILIATE_TAG}"
-        }
-    return None
+    soup = BeautifulSoup(r.content, 'html.parser')
 
-def update_html(deals):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(f"<html><head><title>Best Deals</title></head><body>")
-        f.write(f"<h1>🔥 Best Deals (Updated: {now})</h1><ul>")
-        for deal in deals:
-            f.write(f"<li><a href='{deal['url']}' target='_blank'>{deal['title']}</a> - {deal['price']}</li>")
-        f.write("</ul></body></html>")
+    deals = []
+    for deal in soup.select('.DealContent'):
+        title = deal.select_one('.DealTitle').get_text(strip=True)
+        link = "https://www.amazon.in" + deal.select_one('a')['href']
+        link += "?tag=bestdealsbo06-21"  # your affiliate tag
+        price = deal.select_one('.a-price .a-offscreen')
+        price = price.text if price else 'Price not listed'
+
+        deals.append((title, link, price))
+
+        if len(deals) >= 10:
+            break
+
+    return deals
+
+def generate_html(deals):
+    html = f"""<html>
+    <head><title>Best Deals</title></head>
+    <body>
+    <h1>Top Amazon Deals - {datetime.now().strftime('%d %B %Y')}</h1>
+    <ul>
+    """
+    for title, link, price in deals:
+        html += f"<li><a href='{link}' target='_blank'>{title}</a> - <b>{price}</b></li>\n"
+
+    html += "</ul></body></html>"
+    return html
 
 if __name__ == "__main__":
-    deals = []
-    for url in PRODUCT_URLS:
-        data = fetch_price_amazon(url)
-        if data:
-            deals.append(data)
-    update_html(deals)
+    deals = get_deals()
+    html = generate_html(deals)
+
+    with open("index.html", "w", encoding='utf-8') as f:
+        f.write(html)
