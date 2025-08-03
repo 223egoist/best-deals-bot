@@ -1,0 +1,33 @@
+name: Daily Deals Bot
+
+on:
+  schedule:
+    - cron: '30 3 * * *'  # Runs every day at 3:30 AM IST
+  workflow_dispatch:
+
+jobs:
+  update-deals:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run deal script
+        run: python bot.py
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.email "bot@github.com"
+          git config --global user.name "Best Deals Bot"
+          git add .
+          git commit -m "🔄 Daily update" || echo "No changes"
+          git push
